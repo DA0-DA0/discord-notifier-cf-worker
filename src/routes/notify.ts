@@ -49,13 +49,20 @@ export const notify = async (
 
         for (let i = RETRIES; i > 0; i--) {
           try {
-            await fetch(url, {
+            const response = await fetch(url, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify(data),
             })
+            console.log(
+              `Sent notification to ${url} for ${chainId}/${
+                request.dao
+              }. Status: ${response.status}. Response: ${await response
+                .text()
+                .catch(() => '')}`
+            )
             return true
           } catch (err) {
             // If retries left, continue.
