@@ -44,16 +44,23 @@ export const registrations = async (
         guild: {
           id: guildId,
           name:
-            guild.status === 'fulfilled' ? (guild.value as any).name : guildId,
+            (guild.status === 'fulfilled' &&
+              'value' in guild &&
+              (guild.value as any).name) ||
+            guildId,
           iconHash:
-            guild.status === 'fulfilled' ? (guild.value as any).icon : null,
+            (guild.status === 'fulfilled' &&
+              'value' in guild &&
+              (guild.value as any).icon) ||
+            null,
         },
         channel: {
           id: channelId,
           name:
-            channel.status === 'fulfilled'
-              ? (channel.value as any).name
-              : channelId,
+            (channel.status === 'fulfilled' &&
+              'value' in channel &&
+              (channel.value as any).name) ||
+            channelId,
         },
       }
     })
