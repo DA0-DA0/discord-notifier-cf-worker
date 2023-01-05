@@ -1,6 +1,7 @@
 import { RequestWithDao, Env } from '../types'
 import {
   allWebhookKeysForPrefix,
+  objectMatchesStructure,
   respond,
   respondError,
   webhooksForDaoPrefix,
@@ -40,9 +41,16 @@ export const notify = async (
 
     const responses = await Promise.all(
       batch.map(async (webhook, index) => {
-        // Should never happen.
-        if (!webhook) {
-          return false
+        // Webhook may not exist if it was deleted recently as KV stores take
+        // time to propagate.
+        if (
+          !webhook ||
+          !objectMatchesStructure(webhook, {
+            id: {},
+            url: {},
+          })
+        ) {
+          return
         }
 
         const { id, url } = webhook
