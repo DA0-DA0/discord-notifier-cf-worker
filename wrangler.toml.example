@@ -12,6 +12,4 @@ kv_namespaces = [
 DISCORD_CLIENT_ID = "<VALUE>"
 
 # Secrets:
-# - DISCORD_CLIENT_SECRET
-# - DISCORD_BOT_TOKEN
 # - NOTIFY_API_KEY

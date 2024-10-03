@@ -4,7 +4,9 @@ import {
   objectMatchesStructure,
   respond,
   respondError,
-  webhooksForDaoPrefix,
+  v1WebhooksForDaoPrefix,
+  v2WebhooksForDaoPrefix,
+  v2WebhooksForV1AndV2Keys,
 } from '../utils'
 
 const BATCH_SIZE = 10
@@ -25,14 +27,16 @@ export const notify = async (
     return respondError(401, 'Invalid API key.')
   }
 
-  const allKeys = await allWebhookKeysForPrefix(
+  const v1Keys = await allWebhookKeysForPrefix(
     env,
-    webhooksForDaoPrefix(chainId, request.dao)
+    v1WebhooksForDaoPrefix(chainId, request.dao)
+  )
+  const v2Keys = await allWebhookKeysForPrefix(
+    env,
+    v2WebhooksForDaoPrefix(chainId, request.dao)
   )
 
-  const webhooks: ({ id: string; url: string } | null)[] = await Promise.all(
-    allKeys.map(async (k) => await env.WEBHOOKS.get(k, 'json'))
-  )
+  const webhooks = await v2WebhooksForV1AndV2Keys(env, v1Keys, v2Keys)
 
   // Fire webhooks in batches.
   let succeeded = 0
@@ -40,11 +44,10 @@ export const notify = async (
     const batch = webhooks.slice(i, i + BATCH_SIZE)
 
     const responses = await Promise.all(
-      batch.map(async (webhook, index) => {
+      batch.map(async ({ webhook }) => {
         // Webhook may not exist if it was deleted recently as KV stores take
         // time to propagate.
         if (
-          !webhook ||
           !objectMatchesStructure(webhook, {
             id: {},
             url: {},
@@ -81,9 +84,8 @@ export const notify = async (
             // If out of retries, log and remove webhook.
             console.error(err)
             console.error(
-              `Removing webhook ${id} with URL ${url} for ${chainId}/${request.dao} after 3 failures. ${err}`
+              `Webhook ${id} failed 3 times with URL ${url} for ${chainId}/${request.dao}. ${err}`
             )
-            await env.WEBHOOKS.delete(allKeys[index])
             return false
           }
         }

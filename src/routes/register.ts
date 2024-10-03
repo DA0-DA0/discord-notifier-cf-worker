@@ -1,13 +1,28 @@
-import { AuthorizedRequest, Env } from '../types'
-import { webhooksKey, respond, respondError } from '../utils'
+import { AuthorizedRequest, DiscordWebhook, Env, V2Webhook } from '../types'
+import {
+  objectMatchesStructure,
+  respond,
+  respondError,
+  v2WebhooksKey,
+} from '../utils'
 
 export const register = async (
   request: AuthorizedRequest,
   env: Env
 ): Promise<Response> => {
-  const { code, redirectUri } = request.parsedBody.data
+  const { code, clientId, clientSecret, botToken, redirectUri } =
+    request.parsedBody.data
   if (!code) {
     return respondError(400, 'Missing `code`.')
+  }
+  if (!clientId) {
+    return respondError(400, 'Missing `clientId`.')
+  }
+  if (!clientSecret) {
+    return respondError(400, 'Missing `clientSecret`.')
+  }
+  if (!botToken) {
+    return respondError(400, 'Missing `botToken`.')
   }
   if (!redirectUri) {
     return respondError(400, 'Missing `redirectUri`.')
@@ -21,34 +36,57 @@ export const register = async (
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: env.DISCORD_CLIENT_ID,
-        client_secret: env.DISCORD_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     })
-  ).json()) as {
-    webhook: { id: string }
-  }
+  ).json()) as
+    | {
+        webhook: DiscordWebhook
+      }
+    | {
+        error: string
+        error_description: string
+      }
 
-  if (!response.webhook) {
+  if ('error_description' in response) {
     return respond(500, {
       success: false,
-      error: 'No webhook returned.',
+      error: `Discord Error: ${response.error_description}`,
+      response,
+    })
+  } else if (
+    !objectMatchesStructure(response.webhook, {
+      id: {},
+      guild_id: {},
+      channel_id: {},
+      url: {},
+    })
+  ) {
+    return respond(500, {
+      success: false,
+      error: 'Invalid webhook returned. Contact support for assistance.',
       response,
     })
   }
 
-  // Store webhook.
+  const webhook: V2Webhook = {
+    webhook: response.webhook,
+    botToken,
+  }
+
+  // Store webhook and associated data.
   await env.WEBHOOKS.put(
-    webhooksKey(
+    v2WebhooksKey(
       request.parsedBody.data.auth.chainId,
       request.dao,
       request.parsedBody.data.auth.publicKey,
       response.webhook.id
     ),
-    JSON.stringify(response.webhook)
+    JSON.stringify(webhook)
   )
 
   return respond(200, {

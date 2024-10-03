@@ -1,5 +1,5 @@
 import { AuthorizedRequest, Env } from '../types'
-import { webhooksKey, respond, respondError } from '../utils'
+import { v1WebhooksKey, v2WebhooksKey, respond, respondError } from '../utils'
 
 export const unregister = async (
   request: AuthorizedRequest,
@@ -11,14 +11,24 @@ export const unregister = async (
   }
 
   // Delete webhook.
-  await env.WEBHOOKS.delete(
-    webhooksKey(
-      request.parsedBody.data.auth.chainId,
-      request.dao,
-      request.parsedBody.data.auth.publicKey,
-      id
-    )
-  )
+  await Promise.all([
+    env.WEBHOOKS.delete(
+      v1WebhooksKey(
+        request.parsedBody.data.auth.chainId,
+        request.dao,
+        request.parsedBody.data.auth.publicKey,
+        id
+      )
+    ),
+    env.WEBHOOKS.delete(
+      v2WebhooksKey(
+        request.parsedBody.data.auth.chainId,
+        request.dao,
+        request.parsedBody.data.auth.publicKey,
+        id
+      )
+    ),
+  ])
 
   return respond(200, {
     success: true,

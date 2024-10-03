@@ -4,10 +4,7 @@ export interface Env {
   NONCES: KVNamespace
   WEBHOOKS: KVNamespace
 
-  // Environment variables.
-  DISCORD_CLIENT_ID: string
   // Secrets.
-  DISCORD_CLIENT_SECRET: string
   DISCORD_BOT_TOKEN: string
   NOTIFY_API_KEY: string
 }
@@ -41,4 +38,17 @@ export interface AuthorizedRequest<
 > extends IttyRequest {
   parsedBody: RequestBody<Data>
   dao: string
+}
+
+export type DiscordWebhook = {
+  id: string
+  guild_id: string
+  channel_id: string
+  url: string
+}
+
+export type V1Webhook = DiscordWebhook
+export type V2Webhook = {
+  webhook: DiscordWebhook
+  botToken: string
 }
