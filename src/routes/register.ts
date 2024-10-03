@@ -48,14 +48,20 @@ export const register = async (
         webhook: DiscordWebhook
       }
     | {
-        error: string
         error_description: string
       }
+    | {
+        message: string
+      }
 
-  if ('error_description' in response) {
+  if ('error_description' in response || 'message' in response) {
     return respond(500, {
       success: false,
-      error: `Discord Error: ${response.error_description}`,
+      error: `Discord Error: ${
+        'error_description' in response
+          ? response.error_description
+          : response.message
+      }`,
       response,
     })
   } else if (
@@ -66,6 +72,7 @@ export const register = async (
       url: {},
     })
   ) {
+    console.error('Invalid webhook returned.', response)
     return respond(500, {
       success: false,
       error: 'Invalid webhook returned. Contact support for assistance.',
